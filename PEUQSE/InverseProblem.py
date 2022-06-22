@@ -1912,22 +1912,37 @@ class parameter_estimation:
         """
         Calls other convergence functions to do calculations and make plots.
         """
+        from zeus.autocorr import AutoCorrTime
         # first get the autocorrelationtime
         if samplingFunctionstr == 'EnsembleSliceSampling':
             # zeus called function using sampling object
-            taus = samplingObject.act
+            # use zeus object to repopulate the chains that are not flattened
+            refined_burn_in = int(self.mcmc_burn_in_length / self.mcmc_nwalkers)
+            refined_post_burn_in_samples = samplingObject.get_chain(discard=refined_burn_in)
+            N = np.exp(np.linspace(np.log(100), np.log(self.post_burn_in_samples.shape[1]), 10)).astype(int)
+            taus = np.empty(len(N))
+            for i, n in enumerate(N):
+                taus[i] = AutoCorrTime(refined_post_burn_in_samples[:,:,n])
 
         elif samplingFunctionstr == 'EnsembleSampling':
             # emcee called function using sampling object
-            taus = samplingObject.get_autocorr_time()
+            refined_burn_in = int(self.mcmc_burn_in_length / self.mcmc_nwalkers)
+            refined_post_burn_in_samples = samplingObject.get_chain(discard=refined_burn_in)
+            N = np.exp(np.linspace(np.log(100), np.log(self.post_burn_in_samples.shape[1]), 10)).astype(int)
+            taus = np.empty(len(N))
+            for i, n in enumerate(N):
+                taus[i] = AutoCorrTime(refined_post_burn_in_samples[:,:,n])
 
         elif samplingFunctionstr == 'MetropolisHastings':
             # use zeus function to create act
-            from zeus.autocorr import AutoCorrTime
             refined_post_burn_in_samples = np.expand_dims(self.post_burn_in_samples, axis=1)
-            taus = AutoCorrTime(refined_post_burn_in_samples)
+            N = np.exp(np.linspace(np.log(100), np.log(self.post_burn_in_samples.shape[1]), 10)).astype(int)
+            taus = np.empty(len(N))
+            for i, n in enumerate(N):
+                taus[i] = AutoCorrTime(refined_post_burn_in_samples[:,:,n])
         print('AutoCorrelatedTime of', taus)
         
+        # Add graphing function
 
         # Gelman-Rubin statistics
         # use pymc to get this stat

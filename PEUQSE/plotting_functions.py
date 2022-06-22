@@ -405,3 +405,16 @@ def createScatterHeatMapPlot(data_a, data_b, a_tuple, b_tuple, graphs_directory,
         plt.locator_params(axis='y', nbins=plot_settings['max_num_y_ticks'])
     fig.savefig(graphs_directory+f'Heat_Scatter_{a_tuple[1]}_{b_tuple[1]}',dpi=plot_settings['dpi'])
     plt.close(fig)
+
+def createAutoCorrPlot(N, taus, graphs_directory):
+    """
+    
+    """
+    plt.loglog(N, taus, "o-")
+    ylim = plt.gca().get_ylim()
+    plt.plot(N, N / 50.0, "--k", label=r"$\tau = N/50$")
+    plt.ylim(ylim)
+    plt.xlabel("number of samples, $N$")
+    plt.ylabel(r"$\tau$ estimates")
+    plt.legend(fontsize=14)
+    plt.savefig(graphs_directory+f'AutoCorrelationPlot')
