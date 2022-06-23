@@ -1,3 +1,4 @@
+from cProfile import label
 import sys
 #sys.path.insert(0, '/mumpce/')
 import PEUQSE.mumpce.Project as mumpceProject
@@ -406,15 +407,19 @@ def createScatterHeatMapPlot(data_a, data_b, a_tuple, b_tuple, graphs_directory,
     fig.savefig(graphs_directory+f'Heat_Scatter_{a_tuple[1]}_{b_tuple[1]}',dpi=plot_settings['dpi'])
     plt.close(fig)
 
-def createAutoCorrPlot(N, taus, graphs_directory):
+def createAutoCorrPlot(N, taus, param_name, param_symbol, graphs_directory):
     """
-    
+    Creates Integrated Autocorrelated Plots to show MCMC convergence.
     """
-    plt.loglog(N, taus, "o-")
+
+    fig = plt.figure()
+    plt.loglog(N, taus, "o-", label='AutoCorr')
     ylim = plt.gca().get_ylim()
     plt.plot(N, N / 50.0, "--k", label=r"$\tau = N/50$")
     plt.ylim(ylim)
     plt.xlabel("number of samples, $N$")
     plt.ylabel(r"$\tau$ estimates")
+    plt.title(f'Integrate Autocorrelation Time for {param_symbol}')
     plt.legend(fontsize=14)
-    plt.savefig(graphs_directory+f'AutoCorrelationPlot')
+    plt.savefig(graphs_directory+'AutoCorrelationPlot_'+param_name)
+    plt.close(fig)

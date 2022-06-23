@@ -1913,35 +1913,41 @@ class parameter_estimation:
         Calls other convergence functions to do calculations and make plots.
         """
         from zeus.autocorr import AutoCorrTime
+        from emcee.autocorr import integrated_time, function_1d
         # first get the autocorrelationtime
         if samplingFunctionstr == 'EnsembleSliceSampling':
             # zeus called function using sampling object
             # use zeus object to repopulate the chains that are not flattened
             refined_burn_in = int(self.mcmc_burn_in_length / self.mcmc_nwalkers)
             refined_post_burn_in_samples = samplingObject.get_chain(discard=refined_burn_in)
-            N = np.exp(np.linspace(np.log(100), np.log(self.post_burn_in_samples.shape[1]), 10)).astype(int)
-            taus = np.empty(len(N))
+            N = np.exp(np.linspace(np.log(100), np.log(refined_post_burn_in_samples.shape[0]), 10)).astype(int)
+            # taus_zeus = np.empty((len(N),refined_post_burn_in_samples.shape[2])) # initialize array with shape (N_intervals, numParams)
+            taus_emcee = np.empty((len(N),refined_post_burn_in_samples.shape[2])) # initialize array with shape (N_intervals, numParams)
             for i, n in enumerate(N):
-                taus[i] = AutoCorrTime(refined_post_burn_in_samples[:,:,n])
+                # taus_zeus[i] = AutoCorrTime(refined_post_burn_in_samples[:n,:,:])
+                taus_emcee[i] = integrated_time(refined_post_burn_in_samples[:n,:,:])
 
         elif samplingFunctionstr == 'EnsembleSampling':
             # emcee called function using sampling object
             refined_burn_in = int(self.mcmc_burn_in_length / self.mcmc_nwalkers)
             refined_post_burn_in_samples = samplingObject.get_chain(discard=refined_burn_in)
-            N = np.exp(np.linspace(np.log(100), np.log(self.post_burn_in_samples.shape[1]), 10)).astype(int)
-            taus = np.empty(len(N))
+            N = np.exp(np.linspace(np.log(100), np.log(refined_post_burn_in_samples.shape[0]), 20)).astype(int)
+            taus_zeus = np.empty((len(N),refined_post_burn_in_samples.shape[2])) # initialize array with shape (N_intervals, numParams)
             for i, n in enumerate(N):
-                taus[i] = AutoCorrTime(refined_post_burn_in_samples[:,:,n])
+                taus_zeus[i] = AutoCorrTime(refined_post_burn_in_samples[:n,:,:])
 
         elif samplingFunctionstr == 'MetropolisHastings':
             # use zeus function to create act
             refined_post_burn_in_samples = np.expand_dims(self.post_burn_in_samples, axis=1)
-            N = np.exp(np.linspace(np.log(100), np.log(self.post_burn_in_samples.shape[1]), 10)).astype(int)
-            taus = np.empty(len(N))
+            N = np.exp(np.linspace(np.log(100), np.log(self.post_burn_in_samples.shape[0]), 20)).astype(int)
+            taus_zeus = np.empty((len(N),refined_post_burn_in_samples.shape[2])) # initialize array with shape (N_intervals, numParams)
             for i, n in enumerate(N):
-                taus[i] = AutoCorrTime(refined_post_burn_in_samples[:,:,n])
-        print('AutoCorrelatedTime of', taus)
+                taus_zeus[i] = AutoCorrTime(refined_post_burn_in_samples[:n,:,:])
         
+        from PEUQSE.plotting_functions import createAutoCorrPlot
+        for param_taus, (parameter_name, parameter_math_name) in zip(taus_zeus.T, self.UserInput.model['parameterNamesAndMathTypeExpressionsDict'].items()):
+            createAutoCorrPlot(N, param_taus, parameter_name, parameter_math_name, self.UserInput.directories['graphs'])
+            print('AutoCorrelatedTime of', param_taus)
         # Add graphing function
 
         # Gelman-Rubin statistics
