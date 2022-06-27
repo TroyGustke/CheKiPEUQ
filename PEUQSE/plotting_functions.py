@@ -423,3 +423,22 @@ def createAutoCorrPlot(N, taus, param_name, param_symbol, graphs_directory):
     plt.legend(fontsize=14)
     plt.savefig(graphs_directory+'AutoCorrelationPlot_'+param_name)
     plt.close(fig)
+
+def createGewekePlot(z_scores, N, z_percents, param_name, param_symbol, graphs_directory):
+    """
+    Creates Gewekes indicies plot of entire post burn in samples
+    and a plot for percentage of points that fall outside 1 std when compared to the 
+    first 10% of the relative window size to the last 50%.
+    """
+    fig, (ax1, ax2) = plt.subplots(1, 2, tight_layout=True, squeeze=True)
+    plt.suptitle(f'Geweke Diagnostics for {param_symbol}')
+    ax1.scatter(*z_scores)
+    ax1.hlines([1], 0, round(z_scores[0][-1]), linestyles='dotted')
+    ax1.set_xlabel('Last 50% Samples')
+    ax1.set_ylabel('Z scores')
+    ax1.set_xlim(0, round(z_scores[0][-1]))
+    ax2.plot(N, z_percents, "o-")
+    ax2.set_xlabel('Sample Indices')
+    ax2.set_ylabel('Percent Outside '+u"\u00B1"+"1"+u"\u03C3")
+    fig.savefig(graphs_directory+'GewekeDiagnostic_'+param_name)
+    plt.close(fig)

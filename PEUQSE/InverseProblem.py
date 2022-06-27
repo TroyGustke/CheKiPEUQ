@@ -1913,7 +1913,6 @@ class parameter_estimation:
         Calls other convergence functions to do calculations and make plots.
         """
         from zeus.autocorr import AutoCorrTime
-        from emcee.autocorr import integrated_time, function_1d
         # first get the autocorrelationtime
         if samplingFunctionstr == 'EnsembleSliceSampling':
             # zeus called function using sampling object
@@ -1921,11 +1920,9 @@ class parameter_estimation:
             refined_burn_in = int(self.mcmc_burn_in_length / self.mcmc_nwalkers)
             refined_post_burn_in_samples = samplingObject.get_chain(discard=refined_burn_in)
             N = np.exp(np.linspace(np.log(100), np.log(refined_post_burn_in_samples.shape[0]), 10)).astype(int)
-            # taus_zeus = np.empty((len(N),refined_post_burn_in_samples.shape[2])) # initialize array with shape (N_intervals, numParams)
-            taus_emcee = np.empty((len(N),refined_post_burn_in_samples.shape[2])) # initialize array with shape (N_intervals, numParams)
+            taus_zeus = np.empty((len(N),refined_post_burn_in_samples.shape[2])) # initialize array with shape (N_intervals, numParams)
             for i, n in enumerate(N):
-                # taus_zeus[i] = AutoCorrTime(refined_post_burn_in_samples[:n,:,:])
-                taus_emcee[i] = integrated_time(refined_post_burn_in_samples[:n,:,:])
+                taus_zeus[i] = AutoCorrTime(refined_post_burn_in_samples[:n,:,:])
 
         elif samplingFunctionstr == 'EnsembleSampling':
             # emcee called function using sampling object
@@ -1950,9 +1947,37 @@ class parameter_estimation:
             print('AutoCorrelatedTime of', param_taus)
         # Add graphing function
 
-        # Gelman-Rubin statistics
-        # use pymc to get this stat
-        # other pymc stats can go below
+        # add Geweke's indicies plots
+        from arviz import geweke
+        from PEUQSE.plotting_functions import createGewekePlot
+        # create a linearly space array for creating window sizes for Geweke percent diagnostic
+        N_geweke = np.linspace(0, refined_post_burn_in_samples.shape[0], 21).astype(int)[1:]
+        # loop through each param, each chain, and each window size
+        # 
+        for param_num, (parameter_name, parameter_math_name) in enumerate(self.UserInput.model['parameterNamesAndMathTypeExpressionsDict'].items()):
+            z_scores_array_per_chain = [] # initialize list for number of windows
+            for chain_num in range(refined_post_burn_in_samples.shape[1]):
+                z_scores_array_per_window = [] # initialize the list
+                for window in N_geweke:
+                    local_z_score = geweke(refined_post_burn_in_samples[:window, chain_num, param_num])
+                    if window == N_geweke[-1]:
+                        z_scores_final_indices = local_z_score.T[0]
+                    z_scores_array_per_window.append(local_z_score.T[1])
+                z_scores_array_per_chain.append(z_scores_array_per_window)
+            z_scores_array_per_chain = np.array(z_scores_array_per_chain)
+            z_scores_array = np.mean(np.abs(z_scores_array_per_chain), axis=0)
+            # z_scores_percentage_outlier = np.array([len(z_scores_array[z_scores_array[:,i] <= 1][i])/z_scores_array.shape[0] for i in range(z_scores_array.shape[1])])
+            z_scores_percentage_outlier = np.count_nonzero(z_scores_array>1, axis=1) / z_scores_array.shape[1]
+            z_scores_final = z_scores_array[:,-1]
+            z_scores_geweke_final_plot_inputs = [z_scores_final_indices, z_scores_final]
+            # now plot using PEUQSE.plotting function
+            createGewekePlot(z_scores_geweke_final_plot_inputs, N_geweke, z_scores_percentage_outlier, parameter_name, parameter_math_name, self.UserInput.directories['graphs'])
+        # get combined parameter Geweke plot
+
+        # createGewekePlot('','','', 'Combined_Parameters', 'All Parameters', self.UserInput.directories['graphs'])
+        
+
+
 
 
         pass
