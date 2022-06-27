@@ -1954,6 +1954,7 @@ class parameter_estimation:
         N_geweke = np.linspace(0, refined_post_burn_in_samples.shape[0], 21).astype(int)[1:]
         # loop through each param, each chain, and each window size
         # 
+        total_z_scores = []
         for param_num, (parameter_name, parameter_math_name) in enumerate(self.UserInput.model['parameterNamesAndMathTypeExpressionsDict'].items()):
             z_scores_array_per_chain = [] # initialize list for number of windows
             for chain_num in range(refined_post_burn_in_samples.shape[1]):
@@ -1965,6 +1966,7 @@ class parameter_estimation:
                     z_scores_array_per_window.append(local_z_score.T[1])
                 z_scores_array_per_chain.append(z_scores_array_per_window)
             z_scores_array_per_chain = np.array(z_scores_array_per_chain)
+            total_z_scores.append(z_scores_array_per_chain)
             z_scores_array = np.mean(np.abs(z_scores_array_per_chain), axis=0)
             # z_scores_percentage_outlier = np.array([len(z_scores_array[z_scores_array[:,i] <= 1][i])/z_scores_array.shape[0] for i in range(z_scores_array.shape[1])])
             z_scores_percentage_outlier = np.count_nonzero(z_scores_array>1, axis=1) / z_scores_array.shape[1]
@@ -1973,14 +1975,13 @@ class parameter_estimation:
             # now plot using PEUQSE.plotting function
             createGewekePlot(z_scores_geweke_final_plot_inputs, N_geweke, z_scores_percentage_outlier, parameter_name, parameter_math_name, self.UserInput.directories['graphs'])
         # get combined parameter Geweke plot
-
-        # createGewekePlot('','','', 'Combined_Parameters', 'All Parameters', self.UserInput.directories['graphs'])
-        
-
-
-
-
-        pass
+        total_z_scores = np.array(total_z_scores)
+        z_scores_sum_params = np.mean(np.abs(total_z_scores), axis=0)
+        z_scores_sum_params_and_chains = np.mean(z_scores_sum_params, axis=0)
+        z_scores_sum_params_final = z_scores_sum_params_and_chains[:, -1]
+        z_scores_sum_params_percentage_outlier = np.count_nonzero(z_scores_sum_params_and_chains>1, axis=1) / z_scores_sum_params_and_chains.shape[1]
+        z_scores_sum_params_geweke_final_plot_inputs = [z_scores_final_indices, z_scores_sum_params_final]
+        createGewekePlot(z_scores_sum_params_geweke_final_plot_inputs, N_geweke, z_scores_sum_params_percentage_outlier, 'Combined_Parameters', 'All Parameters', self.UserInput.directories['graphs'])
 
 
     #Our EnsembleSampling is done by the emcee back end. (pip install emcee)
