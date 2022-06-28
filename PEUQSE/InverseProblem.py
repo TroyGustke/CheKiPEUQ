@@ -649,7 +649,7 @@ class parameter_estimation:
             initialPointsFirstTerm = np.zeros((numStartPoints, numParameters)) #Make the first term all zeros.
         elif initialPointsDistributionType.lower() =='gaussian':
             initialPointsFirstTerm = np.random.randn(numStartPoints, numParameters) #<--- this was from the zeus example. TODO: change this to rng.standard_normal
-        elif initialPointsDistributionType.lower() == 'astroidal':
+        elif (initialPointsDistributionType.lower() == 'astroidal') or (initialPointsDistributionType.lower() == 'shell'):
             # The idea is to create a hypercube around the origin then apply a power law factor.
             # This factor is set as the numParameters to create an interesting distribution for Euclidean distance that starts as a uniform distribution then decays by a power law if the exponent is the number of dimensions. 
             from scipy.stats import qmc
@@ -1943,7 +1943,7 @@ class parameter_estimation:
 
         elif samplingFunctionstr == 'MetropolisHastings':
             refined_post_burn_in_samples = np.expand_dims(self.post_burn_in_samples, axis=1)
-            
+
         # create window sizes that increase on a log scale.
         N = np.exp(np.linspace(np.log(100), np.log(self.post_burn_in_samples.shape[0]), 20)).astype(int)
         # initialize array with shape (N_intervals, numParams)
