@@ -631,8 +631,8 @@ class parameter_estimation:
         #The arguments gridsearchSamplingInterval and gridsearchSamplingRadii are only for the distribution type 'grid', and correspond to the variables  gridsearchSamplingInterval = [], gridsearchSamplingRadii = [] inside getGridPermutations.
         if str(centerPoint).lower() == str(None).lower():
             centerPoint = np.array(self.UserInput.InputParameterInitialGuess)*1.0 #This may be a reduced parameter space.
-        if initialPointsDistributionType.lower() not in ['grid', 'uniform', 'identical', 'gaussian', 'astroidal', 'sobol']:
-            print("Warning: initialPointsDistributionType must be from: 'grid', 'uniform', 'identical', 'gaussian', 'astroidal', 'sobol'.  A different choice was received and is not understood.  initialPointsDistributionType is being set as 'sobol'.")
+        if initialPointsDistributionType.lower() not in ['grid', 'uniform', 'identical', 'gaussian', 'astroidal', 'sobol', 'shell']:
+            print("Warning: initialPointsDistributionType must be from: 'grid', 'uniform', 'identical', 'gaussian', 'astroidal', 'sobol', 'shell'.  A different choice was received and is not understood.  initialPointsDistributionType is being set as 'sobol'.")
             initialPointsDistributionType = 'sobol'
         #For a multi-start with a grid, our algorithm is completely different than other cases.
         if initialPointsDistributionType.lower() =='grid':
@@ -652,13 +652,26 @@ class parameter_estimation:
         elif initialPointsDistributionType.lower() == 'astroidal':
             # The idea is to create a hypercube around the origin then apply a power law factor.
             # This factor is set as the numParameters to create an interesting distribution for Euclidean distance that starts as a uniform distribution then decays by a power law if the exponent is the number of dimensions. 
-            initialPointsFirstTerm = np.random.uniform(-1, 1, [numStartPoints,numParameters]) ** numParameters
+            from scipy.stats import qmc
+            from warnings import catch_warnings, simplefilter #used to suppress warnings when sobol samples are not base2.
+            # A sobol object has to be created to then extract points from the object.
+            # The scramble (Owen Scramble) is always True. This option helps convergence and creates a more unbiased sampling.
+            sobol_object = qmc.Sobol(d=numParameters, scramble=True)
+            with catch_warnings():
+                simplefilter("ignore")
+                sobol_samples = sobol_object.random(numStartPoints)
+            # now we must translate the sequence (from range(0,1) to range(-2,2)). This is analagous to the way we get sampling from a uniform distribution from -2 standard deviations to +2 standard deviations.
+            initialPointsFirstTerm = -1 + 2*sobol_samples
             # This section assures that positive and negative values are generated.
-            if numParameters % 2 == 0:
-                # The exponent is turned to an odd number and the absolute value assures that negative values are included. 
-                initialPointsFirstTerm = initialPointsFirstTerm**(numParameters-1) * np.abs(initialPointsFirstTerm)
-            else:
+            # create mapping scheme of negative values, then make matrix completely positive, apply negatives back later
+            neg_map = np.ones((numStartPoints,numParameters), dtype=int)
+            neg_map[initialPointsFirstTerm < 0] = -1
+            initialPointsFirstTerm = np.abs(initialPointsFirstTerm)
+            if initialPointsDistributionType.lower() == 'astroidal':
                 initialPointsFirstTerm = initialPointsFirstTerm**numParameters
+            elif initialPointsDistributionType.lower() == 'shell':
+                initialPointsFirstTerm = initialPointsFirstTerm**(1/numParameters)
+            initialPointsFirstTerm = neg_map*initialPointsFirstTerm
             # Apply a proportional factor of 2 to get bounds of 2 sigma. This is analagous to the way we get sampling from a uniform distribution from -2 standard deviations to +2 standard deviations.
             initialPointsFirstTerm *= 2
         elif initialPointsDistributionType.lower() == 'sobol':
@@ -988,8 +1001,8 @@ class parameter_estimation:
             calculatePostBurnInStatistics = self.UserInput.parameter_estimation_settings['multistart_calculatePostBurnInStatistics']
         if numStartPoints == 0: #if it's still zero, we need to make it the default which is 3 times the number of active parameters.
             numStartPoints = len(self.UserInput.InputParameterInitialGuess)*3
-        if relativeInitialDistributionSpread == 0: #if it's still zero, we need to make it the default which is 1.
-            relativeInitialDistributionSpread = 1.0              
+        if relativeInitialDistributionSpread == 0: #if it's still zero, we need to make it the default which is 0.866
+            relativeInitialDistributionSpread = 0.866 #This choice is to be helpful for uniform distribution cases, as described in the user input.
         if searchType == 'doGetLogP' or searchType == 'doSinglePoint': #Fixing a common input mistake.
             searchType = 'getLogP'
         #make the initial points list by mostly passing through arguments.
@@ -998,7 +1011,7 @@ class parameter_estimation:
         #we normally only turn on permutationsToSamples if grid or uniform and if getLogP or doOptimizeNegLogP.
         permutationsToSamples = False#initialize with default
         if self.UserInput.parameter_estimation_settings['multistart_permutationsToSamples'] == True:
-            if (initialPointsDistributionType == 'grid') or (initialPointsDistributionType == 'uniform') or (initialPointsDistributionType == 'sobol') or (initialPointsDistributionType == 'astroidal'):
+            if (initialPointsDistributionType == 'grid') or (initialPointsDistributionType == 'uniform') or (initialPointsDistributionType == 'sobol') or (initialPointsDistributionType == 'astroidal') or (initialPointsDistributionType == 'shell'):
                 if (searchType == 'getLogP') or (searchType=='doOptimizeNegLogP') or (searchType=='doOptimizeLogP') or (searchType=='doOptimizeSSR'):
                     permutationsToSamples = True
                         
@@ -2011,7 +2024,7 @@ class parameter_estimation:
         if str(walkerInitialDistributionSpread) == 'UserChoice':
             walkerInitialDistributionSpread = self.UserInput.parameter_estimation_settings['mcmc_walkerInitialDistributionSpread']
         if str(walkerInitialDistributionSpread).lower() == 'auto':
-            walkerInitialDistributionSpread = 1.0
+            walkerInitialDistributionSpread = 0.866 #This choice is intended to be useful for uniform distribution priors, as described in the UserInput file.
             
         #Check if we need to continue sampling, and prepare for it if we need to.
         if continueSampling == 'auto':
@@ -2143,7 +2156,7 @@ class parameter_estimation:
         if str(walkerInitialDistributionSpread) == 'UserChoice':
             walkerInitialDistributionSpread = self.UserInput.parameter_estimation_settings['mcmc_walkerInitialDistributionSpread']
         if str(walkerInitialDistributionSpread).lower() == 'auto':
-            walkerInitialDistributionSpread = 1.0
+            walkerInitialDistributionSpread = 0.866  #This choice is intended to be useful for uniform distribution priors, as described in the UserInput file.
             
         #Check if we need to continue sampling, and prepare for it if we need to.
         if continueSampling == 'auto':
