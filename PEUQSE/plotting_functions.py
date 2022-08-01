@@ -469,3 +469,17 @@ def createGewekePlot(z_scores, N, z_percents, param_name, param_symbol, graphs_d
     ax2.set_ylabel('Percent Outside '+u"\u00B1"+"1"+u"\u03C3")
     fig.savefig(graphs_directory+'GewekeDiagnostic_'+param_name)
     plt.close(fig)
+
+def createTracePlot(discrete_chains_sample, param_name, param_symbol, graphs_directory):
+    """
+    Plots the trajectories of each walker for a single parameter. 
+
+    :param discrete_chains_samples: Array with all chains separated for single parameter. Expected shape is (numSamples, numChains). (:type: np.array)
+    """
+    fig = plt.figure(figsize=(12, 4))
+    plt.plot(discrete_chains_sample, alpha=0.5)
+    plt.xlabel('Number of Samples')
+    plt.ylabel(param_symbol)
+    plt.title('Trace Plot for '+param_symbol)
+    plt.savefig(graphs_directory+'TracePlot_'+param_name)
+    plt.close(fig)

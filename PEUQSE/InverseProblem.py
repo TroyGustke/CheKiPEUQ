@@ -3095,6 +3095,12 @@ class parameter_estimation:
             figureObject_beta.mumpce_plots(model_parameter_info = self.UserInput.model_parameter_info, active_parameters = active_parameters, pairs_of_parameter_indices = pairs_of_parameter_indices, posterior_mu_vector = posterior_mu_vector, posterior_cov_matrix = posterior_cov_matrix, prior_mu_vector = np.array(self.UserInput.mu_prior), prior_cov_matrix = self.UserInput.covmat_prior, contour_settings_custom = contour_settings_custom)
         return figureObject_beta
 
+    def makeTracePlots(self):
+        """
+        Make Trace plots for all parameters. Must have discrete chains array.
+        """
+        pass
+
     @CiteSoft.after_call_compile_consolidated_log(compile_checkpoints=True) #This is from the CiteSoft module.
     def createAllPlots(self):
         if self.UserInput.request_mpi == True: #need to check if UserInput.request_mpi is on, since if so we will only make plots after the final process.
@@ -3660,7 +3666,12 @@ def calculateAndPlotConvergenceDiagnostics(discrete_chains_post_burn_in_samples,
         window_indices_geweke = None
         z_scores_sum_params_final = None
         z_scores_sum_params_percentage_outlier = None
-    # return both window_indicies, final ACT values each param, final ACT values each param and window, final z scores summed parameters, and final summed parameters percent outliers
+    
+    # create trace plots for each parameter
+    from PEUQSE.plotting_functions import createTracePlot
+    for param_index, (parameter_name, parameter_math_name) in enumerate(parameterNamesAndMathTypeExpressionsDict.items()):
+        createTracePlot(discrete_chains_post_burn_in_samples[:,:,param_index], parameter_name, parameter_math_name, graphs_directory)
+    # return both window_indicies, final ACT values each param, final ACT values each param and window, final z scores summed parameters, and final summed parameters percent outliers   
     return (window_indices_act, taus_zeus[-1,:], parameter_act_for_each_window, window_indices_geweke, z_scores_sum_params_final, z_scores_sum_params_percentage_outlier)
         
 def geweke_diagnostic(post_burn_in_samples, initial_window=0.1, comparison_window=0.5, intervals=20):
