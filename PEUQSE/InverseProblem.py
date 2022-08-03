@@ -3095,12 +3095,6 @@ class parameter_estimation:
             figureObject_beta.mumpce_plots(model_parameter_info = self.UserInput.model_parameter_info, active_parameters = active_parameters, pairs_of_parameter_indices = pairs_of_parameter_indices, posterior_mu_vector = posterior_mu_vector, posterior_cov_matrix = posterior_cov_matrix, prior_mu_vector = np.array(self.UserInput.mu_prior), prior_cov_matrix = self.UserInput.covmat_prior, contour_settings_custom = contour_settings_custom)
         return figureObject_beta
 
-    def makeTracePlots(self):
-        """
-        Make Trace plots for all parameters. Must have discrete chains array.
-        """
-        pass
-
     @CiteSoft.after_call_compile_consolidated_log(compile_checkpoints=True) #This is from the CiteSoft module.
     def createAllPlots(self):
         if self.UserInput.request_mpi == True: #need to check if UserInput.request_mpi is on, since if so we will only make plots after the final process.
@@ -3603,12 +3597,12 @@ def calculateAndPlotConvergenceDiagnostics(discrete_chains_post_burn_in_samples,
         # create combined parameters plot for ACT
         heuristic_exponent_value = discrete_chains_post_burn_in_samples.shape[2] # reassign to the number of combined parameters, which is all parameters
         createAutoCorrTimePlot(window_indices_act, combined_parameter_act_for_each_window, 'Combined_Parameters', 'All Parameters', heuristic_exponent_value, graphs_directory)
-        
     except Exception as theError:
         window_indices_act = None
         taus_zeus = None
         parameter_act_for_each_window = None
         print('The AutoCorrelation Time plots have failed to be created. The error was:', theError)
+    
     try: # prevents crashing when running convergence diagnostics on short chains or weird models
         # We previously used ARVIZ version 0.11.0 with the below syntax and switched in July 2022.
         # from arviz import geweke
@@ -3659,7 +3653,6 @@ def calculateAndPlotConvergenceDiagnostics(discrete_chains_post_burn_in_samples,
         # now plot using PEUQSE.plotting function if createPlots is True
         if createPlots:
             createGewekePlot(z_scores_sum_params_geweke_final_plot_inputs, window_indices_geweke, z_scores_sum_params_percentage_outlier, 'Combined_Parameters', 'All Parameters', graphs_directory)
-
     except Exception as theError:
         print('Could not calculated Geweke convergence analysis. The chain length may be too small, so more samples are recommended.')
         print('The Geweke diagnostic graphs failed to be created. The error was:', theError)
@@ -3668,9 +3661,11 @@ def calculateAndPlotConvergenceDiagnostics(discrete_chains_post_burn_in_samples,
         z_scores_sum_params_percentage_outlier = None
     
     # create trace plots for each parameter
-    from PEUQSE.plotting_functions import createTracePlot
-    for param_index, (parameter_name, parameter_math_name) in enumerate(parameterNamesAndMathTypeExpressionsDict.items()):
-        createTracePlot(discrete_chains_post_burn_in_samples[:,:,param_index], parameter_name, parameter_math_name, graphs_directory)
+    if True:
+        if createPlots:
+            from PEUQSE.plotting_functions import createTracePlot
+            for param_index, (parameter_name, parameter_math_name) in enumerate(parameterNamesAndMathTypeExpressionsDict.items()):
+                createTracePlot(discrete_chains_post_burn_in_samples[:,:,param_index], parameter_name, parameter_math_name, graphs_directory)
     # return both window_indicies, final ACT values each param, final ACT values each param and window, final z scores summed parameters, and final summed parameters percent outliers   
     return (window_indices_act, taus_zeus[-1,:], parameter_act_for_each_window, window_indices_geweke, z_scores_sum_params_final, z_scores_sum_params_percentage_outlier)
         
